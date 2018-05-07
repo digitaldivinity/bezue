@@ -175,7 +175,11 @@ void dnd(k_point * p,int amount,int mode, RenderWindow & window,Color clr){
 	window.display();
 }
 
-void get_cursor(k_point * p){
+
+
+int main(){
+	k_point p[MAXPOINTS];
+	int w[MAXPOINTS];
 	int i=0;
 	int mode=1;
 	RenderWindow window(VideoMode(X,Y),"click points");
@@ -251,15 +255,4 @@ void get_cursor(k_point * p){
 			}
 		}
 	}
-}
-
-
-int main(){
-	try{
-		k_point p[MAXPOINTS];
-		get_cursor(p);
-	}
-	catch(ex a){a.out();}
-	catch(...){printf("what?\n");}
-	return 0;
 }
