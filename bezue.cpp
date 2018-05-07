@@ -14,7 +14,7 @@ struct k_point{
 	k_point(){
 		x=y=0;
 	}
-	k_point(const double & x, const double & y){//not enough
+	k_point(const double & x, const double & y){
 		this->x=x;
 		this->y=y;
 	}
@@ -30,18 +30,6 @@ struct k_point{
 		printf("%lf %lf\n",x,y);
 	}
 };
-/*
-struct bin_coef{//оптимизация для биномиальных коээфциентов
-	double n[MAXPOINTS][];
-	bin_coef(){
-		for (int i=0;i<MAXPOINTS;i++){
-			n[i]=c(
-		}
-	}
-	double operator()(int i,int j){
-	}
-} bin;
-*/
 
 class ex{
 	int a;
