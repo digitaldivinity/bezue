@@ -26,6 +26,15 @@ struct k_point{
 		k_point r(x+ob.x,y+ob.y);
 		return r;
 	}
+	k_point operator/(double ob){
+		k_point buf(x/ob,y/ob);
+		return buf;
+	}
+	k_point operator=(k_point ob){
+		this->x=ob.x;
+		this->y=ob.y;
+		return *this;
+	}
 	void out(){
 		printf("%lf %lf\n",x,y);
 	}
@@ -48,24 +57,32 @@ class ex{
 		}
 	}
 };
+//глобальные переменные сократят описание функций
+k_point p[MAXPOINTS];
+double w[MAXPOINTS];
+int mode=1;
+int amount=0;
+RenderWindow window(VideoMode(X,Y),"click points");
+sf::Text text;
+sf::Font font;
+char str[32];
 
 
-//место - номер в массиве, количество - колво значимых элементов массива
-void ins_point(k_point * p,k_point & chto, int mesto, int & kolvo){
-	if (kolvo==MAXPOINTS) throw ex(40);
-	if (mesto > kolvo-1) throw ex(40); //throw
-	for (int i=kolvo-1;i>=mesto;i--) p[i+1]=p[i];//сдвиг	
+void ins_point(k_point & chto, int mesto){
+	if (amount==MAXPOINTS) throw ex(40);
+	if (mesto > amount-1) throw ex(40); //throw
+	for (int i=amount-1;i>=mesto;i--) p[i+1]=p[i];//сдвиг	
 	p[mesto]=chto;
-	kolvo++;
+	amount++;
 }
-//количество передается по ссылке, это важно
-void del_point(k_point * p, int mesto, int & kolvo){
-	if (kolvo<1) return ; //thrwo
-	if (mesto>kolvo-1) throw ex(41); //throw
-	for (int i=mesto;i<kolvo-1;i++){//сдвиг
+
+void del_point(int mesto){
+	if (amount<1) return ; //thrwo
+	if (mesto>amount-1) throw ex(41); //throw
+	for (int i=mesto;i<amount-1;i++){//сдвиг
 		p[i]=p[i+1];
 	}
-	kolvo--;
+	amount--;
 }
 
 double pow(const double & x,const int & y){
@@ -94,19 +111,28 @@ double b(const int & n, const int & i, const double & t){
 	return c(n,i)*pow(t,i)*pow((1-t),n-i);
 }
 
-k_point polinom(k_point * p,int amount,double t){
+k_point polinom(double t){
 	k_point buf;
+	double s;
+	double sum=0;
+	for (int i=0;i<amount;i++){
+		s=w[i]*b(amount-1,i,t);
+		buf=buf+p[i]*s;
+		sum+=s;		
+	}
+	/*
 	for (int i=0;i<amount;i++){
 		buf=buf+p[i]*b(amount-1,i,t);
 	}
-	return buf;
+	*/
+	return buf/sum;
 }
 
-k_point de_castel(double t, int i, int k, k_point * p){
+k_point de_castel(double t, int i, int k){
 	k_point buf;
 	if (k==0) return p[i];
 	else
-	return de_castel(t,i,k-1,p)*(1-t)+de_castel(t,i+1,k-1,p)*t;
+	return de_castel(t,i,k-1)*(1-t)+de_castel(t,i+1,k-1)*t;
 }
 
 double abs(double x){
@@ -121,14 +147,15 @@ double check_border(double x,double window,double border){
 	else return x;
 }
 
-int check_points(k_point * p,int amount, k_point what){
+int check_points(k_point what){
 	for (int i=0;i<amount;i++){
 		if (abs(p[i].x-what.x)<=8 && abs(p[i].y-what.y)<=8) return i;
 	}
 	return -1;
 }
 
-void draw_points(k_point * p,int amount,RenderWindow & window,sf::Color clr){
+//здесь есть возможность отрисовывать некоторые точки из всего массива
+void draw_points(k_point * p,int amount,sf::Color clr){
 	CircleShape shape(2,100);
 	shape.setFillColor(clr);
 	for (int i=0;i<amount;i++){
@@ -137,7 +164,7 @@ void draw_points(k_point * p,int amount,RenderWindow & window,sf::Color clr){
 	}
 }
 
-void draw_line(k_point p1,k_point p2,RenderWindow & window, sf::Color clr){
+void draw_line(k_point p1,k_point p2, sf::Color clr){
 	sf::Vertex pts[2];
 	pts[0].position = sf::Vector2f(p1.x,p1.y);
 	pts[1].position = sf::Vector2f(p2.x,p2.y);
@@ -146,43 +173,56 @@ void draw_line(k_point p1,k_point p2,RenderWindow & window, sf::Color clr){
 	window.draw(pts, 2, sf::Lines);
 }
 
-void draw_curve(k_point * p, int amount, RenderWindow & window,sf::Color clr,int mode){
+void draw_curve(sf::Color clr){
 	if (mode!=0 && mode !=1) return;
 	if (amount==0) return ;
 	k_point buf1,buf2=p[0];
 	double t=0;
 	double step=1/((double)amount*STEP);
-	if (mode==1) for (int i=0;i<amount-1;i++) draw_line(p[i],p[i+1],window,Color::Green);
+	if (mode==1) for (int i=0;i<amount-1;i++) draw_line(p[i],p[i+1],Color::Green);
 	while (1){
-		buf1=polinom(p,amount,t);
+		buf1=polinom(t);
 		//buf1=de_castel(t,0,amount-1,p);//one or another choose, de castel too slow
-		draw_line(buf1,buf2,window,clr);
+		draw_line(buf1,buf2,clr);
 		buf2=buf1;
 		t=t+step;
 		if (t>=1) {
 			t=1;
-			buf1=polinom(p,amount,t);
-			draw_line(buf1,buf2,window,clr);
+			buf1=polinom(t);
+			draw_line(buf1,buf2,clr);
 			break;
 		}
 	}
 }
 
-void dnd(k_point * p,int amount,int mode, RenderWindow & window,Color clr){
+void dnd(sf::Color clr){
 	window.clear(Color::White);
-	draw_curve(p,amount,window,clr,mode);
-	if (mode) draw_points(p,amount,window,clr);
+	draw_curve(clr);
+	if (mode) draw_points(p,amount,clr);
+	window.display();
+}
+
+void dnd2(){
+	window.clear(Color::White);
+	draw_curve(sf::Color::Black);
+	if (mode) draw_points(p,amount,sf::Color::Black);
+	text.setString(str);
+	window.draw(text);
 	window.display();
 }
 
 
-
 int main(){
-	k_point p[MAXPOINTS];
-	int w[MAXPOINTS];
-	int i=0;
-	int mode=1;
-	RenderWindow window(VideoMode(X,Y),"click points");
+	font.loadFromFile("Gascogne.ttf");
+	text.setFont(font);
+	text.setCharacterSize(20);
+	text.setColor(sf::Color::Black);
+	k_point buf;
+	
+	int num;
+	int i;
+	for (i=0;i<MAXPOINTS;i++) w[i]=1;
+	i=0;
 	window.clear(Color::White);
 	window.display();
 	while (window.isOpen()){
@@ -192,28 +232,36 @@ int main(){
 			else
 			if (event.type == Event::KeyPressed && event.key.code == Keyboard::Space) {
 				mode = mode ^1;
-				dnd(p,i,mode,window,Color::Black);
+				dnd(Color::Black);
 			}
 			else
 			if (event.type == Event::KeyPressed && event.key.code == Keyboard::D){
-				del_point(p,i-1,i);
-				dnd(p,i,mode,window,Color::Black);;
+				del_point(amount-1);
+				dnd(Color::Black);;
+			}
+			else if (event.type == sf::Event::MouseWheelMoved){
+				buf.x=event.mouseWheel.x;
+				buf.y=event.mouseWheel.y;
+				if (-1!=(num=check_points(buf))){
+					if (w[num]>0.7 || event.mouseWheel.delta>0) w[num]+=event.mouseWheel.delta/2.0;
+					text.setPosition(p[num].x-20,p[num].y-20);
+					sprintf(str,"%2.1lf",w[num]);
+					dnd2();
+				}
 			}
 			else
 			if (event.type ==sf::Event:: MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left ){ //кнопка нажата
-				if (i==MAXPOINTS) throw ex(3);//throw
-				int num;
-				k_point buf;
+				if (amount==MAXPOINTS-1) throw ex(3);//throw
 				buf.x=event.mouseButton.x;
 				buf.y=event.mouseButton.y;
-				num=check_points(p,i,buf);
-				if (num==-1) {
-					p[i].x=event.mouseButton.x;
-					p[i].y=event.mouseButton.y;
-					i++;
+				num=check_points(buf);
+				if (-1==(num=check_points(buf))) {
+					p[amount].x=event.mouseButton.x;
+					p[amount].y=event.mouseButton.y;
+					amount++;
 					window.clear(Color::White);
-					draw_curve(p,i,window,Color::Black,mode);
-					if (mode==1) draw_points(p,i,window,Color::Black);
+					draw_curve(Color::Black);
+					if (mode==1) draw_points(p,amount,Color::Black);
 					window.display();
 				}
 				else
@@ -226,28 +274,28 @@ int main(){
 								p[num].x=check_border(event0.mouseMove.x,X,BORDER);
 								p[num].y=check_border(event0.mouseMove.y,Y,BORDER);
 								window.clear(Color::White);
-								draw_curve(p,i,window,Color::Black,mode);
-								if (mode) draw_points(p,i,window,Color::Black);
-								if (mode) draw_points(&p[num],1,window,Color::Red);
+								draw_curve(Color::Black);
+								if (mode) draw_points(p,amount,Color::Black);
+								if (mode) draw_points(&p[num],1,Color::Red);
 								window.display();
 							} 
 							else 
 							if (event0.type == sf::Event:: MouseButtonReleased && event0.mouseButton.button == sf::Mouse::Left){//кнопка отжата
 								p[num].x=check_border(event0.mouseButton.x,X,BORDER);
 								p[num].y=check_border(event0.mouseButton.y,Y,BORDER);
-								dnd(p,i,mode,window,Color::Black);
+								dnd(Color::Black);
 								turn=1;
 							}
 							else
 							if (event0.type == Event::KeyPressed && event0.key.code == Keyboard::A){
-								ins_point(p,p[num],num,i);
+								ins_point(p[num],num);
 								num++;
 							}
 							else
 							if (event0.type == Event:: KeyPressed && event0.key.code == Keyboard::D){
 								turn=1;
-								del_point(p,num,i);
-								dnd(p,i,mode,window,Color::Black);
+								del_point(num);
+								dnd(Color::Black);
 							}
 						}
 					}
